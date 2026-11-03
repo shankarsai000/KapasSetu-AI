@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.conveyor-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(16, 185, 129, 0.25),
+    rgba(16, 185, 129, 0.25) 12px,
+    rgba(15, 23, 42, 0.6) 12px,
+    rgba(15, 23, 42, 0.6) 24px
+  );
+  background-size: 48px 48px;
+}
+
+.conveyor-halted-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(239, 68, 68, 0.35),
+    rgba(239, 68, 68, 0.35) 12px,
+    rgba(24, 24, 27, 0.85) 12px,
+    rgba(24, 24, 27, 0.85) 24px
+  );
+  background-size: 48px 48px;
+}
+

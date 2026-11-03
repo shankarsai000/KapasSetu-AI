@@ -1,0 +1,11 @@
+{
+  "name": "KapasSetu Kisan — Optical Cotton Grader & Village Mandi",
+  "short_name": "KapasSetu",
+  "description": "100% Free Calibrated Cotton Quality Assay & 5km Direct Mill Pool for Farmers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#047857",
+  "orientation": "portrait"
+}
+

@@ -1,0 +1,23 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+      },
+      keyframes: {
+        conveyor: {
+          '0%': { backgroundPosition: '0 0' },
+          '100%': { backgroundPosition: '48px 0' },
+        },
+      },
+      animation: {
+        conveyor: 'conveyor 0.8s linear infinite',
+      },
+    },
+  },
+  plugins: [],
+};
+

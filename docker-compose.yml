@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: kapassetu-postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kapassetu
+      POSTGRES_PASSWORD: kapassetu_pass
+      POSTGRES_DB: kapassetu_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kapassetu -d kapassetu_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: kapassetu-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: kapassetu-backend
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      USE_SQLITE_FALLBACK: "False"
+      DATABASE_URL: "postgresql://kapassetu:kapassetu_pass@postgis:5432/kapassetu_db"
+      REDIS_URL: "redis://redis:6379/0"
+      CORS_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+
+  frontend-kisan:
+    build: ./frontend-kisan
+    container_name: kapassetu-kisan-pwa
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_BACKEND_PROXY: "http://backend:8000"
+      VITE_WS_PROXY: "ws://backend:8000"
+    ports:
+      - "5173:5173"
+
+  frontend-ginner:
+    build: ./frontend-ginner
+    container_name: kapassetu-ginner-console
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_BACKEND_PROXY: "http://backend:8000"
+      VITE_WS_PROXY: "ws://backend:8000"
+    ports:
+      - "5174:5174"
+
+volumes:
+  postgis_data:
+
