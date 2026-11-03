@@ -42,6 +42,7 @@ class Settings(BaseSettings):
 
     # Edge Lint Inspection & Hardware Abstraction Layer (HAL)
     ONNX_MODEL_PATH: str = str(BASE_DIR / "models" / "cotton_contaminant_yolov8n.onnx")
+    MOBILENET_MODEL_PATH: str = str(BASE_DIR / "models" / "cotton_grading_mobilenetv3.onnx")
     HAL_CONFIDENCE_THRESHOLD: float = 0.70
     HAL_DEFAULT_RELAY_DURATION_MS: int = 5000
     EXTERNAL_PLC_WEBHOOK_URL: str = ""

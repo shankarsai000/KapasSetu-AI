@@ -17,6 +17,7 @@ from app.services.cv_grading import (
     run_complete_dual_photo_assay,
 )
 from app.services.hal_controller import ws_manager
+from app.services.lint_inspector import lint_inspector
 from app.services.lot_aggregator import assign_assay_to_village_pool, preview_nearby_pool
 from app.services.moisture_proxy import estimate_cotton_moisture
 from app.services.pricing_engine import calculate_fair_kapas_price
@@ -103,6 +104,7 @@ async def analyze_cotton_sample(
         sensor_raw = form.get("sensor_override_pct")
         sensor_override_pct = float(sensor_raw) if sensor_raw not in (None, "", "null") else None
         auto_join_pool = str(form.get("auto_join_pool") or "false").lower() in ("true", "1", "yes")
+        is_mock = str(form.get("is_mock") or "false").lower() in ("true", "1", "yes")
     else:
         body = await request.json()
         payload = AnalyzeGradeJsonRequest(**body)
@@ -132,9 +134,14 @@ async def analyze_cotton_sample(
         quantity_quintals = payload.quantity_quintals
         sensor_override_pct = payload.sensor_override_pct
         auto_join_pool = payload.auto_join_pool
+        is_mock = payload.is_mock
 
-    # 1. Optical Computer Vision Grading
-    cv_metrics = run_complete_dual_photo_assay(pile_bgr, halo_bgr)
+    # 1. Optical / Deep Learning Grading (with is_mock fallback support)
+    cv_metrics = run_complete_dual_photo_assay(pile_bgr, halo_bgr, is_mock=is_mock)
+
+    # 1b. Run YOLO Contamination model directly on raw pile image for seamless QA
+    yolo_inspection = lint_inspector.inspect_frame(pile_bgr)
+    contaminants = yolo_inspection.get("contaminants_detected", [])
 
     # 2. Agronomic Weather Moisture Proxy (or BLE Override)
     moisture_res = estimate_cotton_moisture(
@@ -267,6 +274,8 @@ async def analyze_cotton_sample(
         annotated_pile_base64=cv_metrics["annotated_pile_base64"],
         annotated_halo_base64=cv_metrics["annotated_halo_base64"],
         nearby_pool_preview=pool_preview,
+        contaminants_detected=contaminants,
+        is_mock=is_mock,
         created_at=assay.created_at,
     )
 

@@ -28,6 +28,7 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [samples, setSamples] = useState([]);
   const [selectedPreset, setSelectedPreset] = useState('kalamb_long_grade_a');
+  const [isMock, setIsMock] = useState(false);
   const [pileImage, setPileImage] = useState(null);
   const [haloImage, setHaloImage] = useState(null);
 
@@ -128,6 +129,7 @@ export default function App() {
   }, [loadPools]);
 
   const handleSelectPreset = (sample) => {
+    setIsMock(false);
     setSelectedPreset(sample.preset_id);
     setPileImage(sample.pile_preview_base64);
     setHaloImage(sample.halo_preview_base64);
@@ -152,6 +154,7 @@ export default function App() {
         pile_image_base64: pileImage,
         halo_image_base64: haloImage,
         sample_preset: selectedPreset,
+        is_mock: isMock,
         farmer_name: formState.farmer_name,
         farmer_phone: formState.farmer_phone,
         village_name: formState.village_name,
@@ -333,6 +336,8 @@ export default function App() {
               setPileImage={setPileImage}
               haloImage={haloImage}
               setHaloImage={setHaloImage}
+              isMock={isMock}
+              setIsMock={setIsMock}
             />
             <MoistureChecklist
               t={t}

@@ -42,6 +42,7 @@ class AnalyzeGradeJsonRequest(BaseModel):
     quantity_quintals: float = Field(default=4.5, ge=0.5, le=200.0)
     sensor_override_pct: float | None = Field(default=None, ge=5.0, le=25.0)
     auto_join_pool: bool = False
+    is_mock: bool = False
 
 
 class AssayResponse(BaseModel):
@@ -81,6 +82,8 @@ class AssayResponse(BaseModel):
     annotated_pile_base64: str | None = None
     annotated_halo_base64: str | None = None
     nearby_pool_preview: dict[str, Any] | None = None
+    contaminants_detected: list[dict[str, Any]] = []
+    is_mock: bool = False
     created_at: datetime
 
 

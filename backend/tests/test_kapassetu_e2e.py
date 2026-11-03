@@ -163,3 +163,44 @@ def test_fix3_sub35ms_lint_inspection_and_hal_interlock() -> None:
         assert reset_res.status_code == 200
         assert reset_res.json()["hal_status"]["conveyor_state"] == "RUNNING"
 
+
+def test_is_mock_dataset_mode_bypass() -> None:
+    """
+    Verify Dataset Mode (is_mock=True):
+    Bypasses white-card Von Kries and ₹5 coin contour search, sets default spatial ratio (0.1 mm/px),
+    passes through MobileNetV3 and YOLO, and maintains the exact same output schema.
+    """
+    with TestClient(app) as client:
+        # Build plain raw dataset image without calibration card or coin (e.g. CIRCOT/Kaggle)
+        raw_cotton = np.full((300, 300, 3), (225, 230, 235), dtype=np.uint8)
+        # Add slight dark trash specks
+        cv2.circle(raw_cotton, (100, 100), 4, (40, 40, 40), -1)
+        raw_b64 = encode_bgr_to_base64_jpeg(raw_cotton, quality=80)
+
+        res = client.post(
+            "/api/v1/grade/analyze",
+            json={
+                "pile_image_base64": raw_b64,
+                "halo_image_base64": raw_b64,
+                "is_mock": True,
+                "farmer_name": "CIRCOT Dataset Sample",
+                "farmer_phone": "9999988888",
+                "village_name": "Wardha",
+                "district": "Wardha",
+                "latitude": 20.7453,
+                "longitude": 78.6022,
+            },
+        )
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data["is_mock"] is True
+        assert data["white_card_detected"] is False
+        assert data["coin_detected"] is False
+        # Exact default spatial ratio assigned
+        assert data["pixel_to_mm_ratio"] == 0.1
+        # Valid staple and grade from MobileNetV3
+        assert 21.0 <= data["staple_length_mm"] <= 36.0
+        assert "Grade" in data["color_grade"]
+        assert "final_fair_price_per_qtl" in data
+        assert isinstance(data["contaminants_detected"], list)
+

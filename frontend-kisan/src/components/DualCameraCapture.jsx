@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle2, ImagePlus, Sparkles, VideoOff, ArrowRight, RotateCcw } from 'lucide-react';
+import { Camera, CheckCircle2, ImagePlus, Sparkles, VideoOff, ArrowRight, RotateCcw, UploadCloud, Database } from 'lucide-react';
 
 export default function DualCameraCapture({
   t,
@@ -10,10 +10,13 @@ export default function DualCameraCapture({
   setPileImage,
   haloImage,
   setHaloImage,
+  isMock,
+  setIsMock,
 }) {
   const [activeStep, setActiveStep] = useState(1); // 1 = Bulk Pile + White Card, 2 = Seed Halo + Rs 5 Coin
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -73,11 +76,12 @@ export default function DualCameraCapture({
     }
   };
 
-  const handleFileUpload = (e, stepNum) => {
-    const file = e.target.files?.[0];
+  const processFile = (file, stepNum) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
+      // Flag as mock dataset upload (CIRCOT / Kaggle demo mode)
+      setIsMock(true);
       if (stepNum === 1) {
         setPileImage(String(reader.result));
         setActiveStep(2);
@@ -86,6 +90,28 @@ export default function DualCameraCapture({
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e, stepNum) => {
+    const file = e.target.files?.[0];
+    processFile(file, stepNum);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    processFile(file, activeStep);
   };
 
   const currentPreview = activeStep === 1 ? pileImage : haloImage;
@@ -99,9 +125,17 @@ export default function DualCameraCapture({
             <Camera className="w-5 h-5 text-amber-300 shrink-0" />
             {t.wizardTitle}
           </h2>
-          <span className="text-xs font-bold bg-amber-400 text-slate-950 px-2.5 py-1 rounded-full shrink-0">
-            {activeStep === 1 ? '1 / 2' : '2 / 2'}
-          </span>
+          <div className="flex items-center gap-2">
+            {isMock && (
+              <span className="text-[11px] font-black bg-blue-500 text-white px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                <Database className="w-3 h-3" />
+                DATASET MODE (is_mock)
+              </span>
+            )}
+            <span className="text-xs font-bold bg-amber-400 text-slate-950 px-2.5 py-1 rounded-full shrink-0">
+              {activeStep === 1 ? '1 / 2' : '2 / 2'}
+            </span>
+          </div>
         </div>
         <p className="text-xs sm:text-sm text-emerald-100 mt-1 leading-snug">{t.wizardSubtitle}</p>
       </div>
@@ -183,7 +217,16 @@ export default function DualCameraCapture({
           </p>
         </div>
 
-        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-900 border-2 border-slate-800 shadow-inner">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-900 border-2 shadow-inner transition-all ${
+            isDragging
+              ? 'border-blue-400 ring-4 ring-blue-500/30'
+              : 'border-slate-800'
+          }`}
+        >
           {cameraOpen ? (
             <video
               ref={videoRef}
@@ -204,6 +247,15 @@ export default function DualCameraCapture({
               <p className="text-sm font-semibold text-slate-200">
                 {activeStep === 1 ? t.step1Title : t.step2Title}
               </p>
+            </div>
+          )}
+
+          {/* Drag and Drop Active Overlay Prompt */}
+          {isDragging && (
+            <div className="absolute inset-0 bg-blue-950/85 backdrop-blur-sm flex flex-col items-center justify-center text-white z-20 pointer-events-none">
+              <UploadCloud className="w-12 h-12 text-blue-300 animate-bounce mb-2" />
+              <p className="text-sm font-black uppercase tracking-wider">Drop CIRCOT / Kaggle Cotton Image Here</p>
+              <p className="text-xs text-blue-200 mt-1">Automatically switches to Dataset Mode (is_mock: true)</p>
             </div>
           )}
 
@@ -309,8 +361,36 @@ export default function DualCameraCapture({
           </p>
         )}
 
+        {/* Drag-and-Drop Dropzone Alongside Camera Controls */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`mt-3 p-3.5 rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center text-center cursor-pointer ${
+            isDragging
+              ? 'bg-blue-100 border-blue-500 text-blue-900'
+              : 'bg-stone-50 border-stone-300 text-slate-700 hover:border-emerald-600 hover:bg-emerald-50/50'
+          }`}
+          onClick={() => document.getElementById(`file-upload-input-${activeStep}`)?.click()}
+        >
+          <UploadCloud className="w-6 h-6 text-emerald-700 mb-1" />
+          <div className="text-xs font-black text-slate-800">
+            Drag & Drop CIRCOT / Kaggle Dataset Image Here
+          </div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            or click to browse from disk • Automatically sends <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">is_mock: true</code>
+          </div>
+          <input
+            id={`file-upload-input-${activeStep}`}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileUpload(e, activeStep)}
+            className="hidden"
+          />
+        </div>
+
         {/* High-Contrast 48px+ Outdoor Action Buttons */}
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {!cameraOpen ? (
             <button
               type="button"
