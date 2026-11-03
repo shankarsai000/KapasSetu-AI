@@ -76,6 +76,55 @@ export default function DualCameraCapture({
     }
   };
 
+  const SAMPLE_INPUT_PRESETS = [
+    {
+      id: 'circot_clean',
+      title: 'CIRCOT Clean Cotton (Dataset Mode)',
+      badge: 'Dataset (No Card/Coin)',
+      pileUrl: '/sample_inputs/04_circot_dataset_clean_seed_cotton.jpg',
+      haloUrl: '/sample_inputs/06_circot_dataset_combed_halo_pure.jpg',
+      isMock: true,
+    },
+    {
+      id: 'kaggle_trash',
+      title: 'Kaggle Field Cotton (High Trash)',
+      badge: 'Dataset (High Trash)',
+      pileUrl: '/sample_inputs/05_kaggle_dataset_high_trash_field_cotton.jpg',
+      haloUrl: '/sample_inputs/06_circot_dataset_combed_halo_pure.jpg',
+      isMock: true,
+    },
+    {
+      id: 'physical_kalamb_a',
+      title: 'Kalamb Calibrated (White Card + ₹5 Coin)',
+      badge: 'Calibrated Physical',
+      pileUrl: '/sample_inputs/01_calibrated_pile_gradeA_whitecard_coin.jpg',
+      haloUrl: '/sample_inputs/01_calibrated_halo_rs5coin_28mm.jpg',
+      isMock: false,
+    },
+  ];
+
+  const loadSamplePreset = async (preset) => {
+    setIsMock(preset.isMock);
+    try {
+      const [resPile, resHalo] = await Promise.all([
+        fetch(preset.pileUrl),
+        fetch(preset.haloUrl),
+      ]);
+      const blobPile = await resPile.blob();
+      const blobHalo = await resHalo.blob();
+
+      const rPile = new FileReader();
+      rPile.onload = () => setPileImage(String(rPile.result));
+      rPile.readAsDataURL(blobPile);
+
+      const rHalo = new FileReader();
+      rHalo.onload = () => setHaloImage(String(rHalo.result));
+      rHalo.readAsDataURL(blobHalo);
+    } catch {
+      // Fallback if local fetch fails
+    }
+  };
+
   const processFile = (file, stepNum) => {
     if (!file) return;
     const reader = new FileReader();
@@ -142,29 +191,27 @@ export default function DualCameraCapture({
 
       {/* Quick Judge / Field Sample Preset Selector */}
       <div className="bg-amber-50/90 border-b border-amber-200 px-4 py-3">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 mb-2">
-          <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>{t.quickDemoTitle}</span>
+        <div className="flex items-center justify-between text-xs font-bold text-amber-900 mb-2">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>1-Click Test Image Presets (Calibrated &amp; Dataset Mode):</span>
+          </div>
+          <span className="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded font-mono">
+            sample_inputs/
+          </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {(samples || []).map((s) => {
-            const isSelected = selectedPreset === s.preset_id;
-            return (
-              <button
-                key={s.preset_id}
-                type="button"
-                onClick={() => onSelectPreset(s)}
-                className={`min-h-[48px] px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border-2 flex items-center justify-between gap-2 ${
-                  isSelected
-                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
-                    : 'bg-white text-slate-800 border-amber-300 hover:border-emerald-600'
-                }`}
-              >
-                <span className="line-clamp-2 leading-tight">{s.label}</span>
-                {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-300 shrink-0" />}
-              </button>
-            );
-          })}
+          {SAMPLE_INPUT_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => loadSamplePreset(p)}
+              className="min-h-[48px] px-3 py-2 rounded-xl text-left text-xs font-extrabold bg-white border-2 border-amber-300 hover:border-emerald-600 active:bg-amber-100 text-slate-800 transition flex flex-col justify-center"
+            >
+              <span className="line-clamp-1">{p.title}</span>
+              <span className="text-[10px] text-emerald-800 font-bold mt-0.5">{p.badge}</span>
+            </button>
+          ))}
         </div>
       </div>
 

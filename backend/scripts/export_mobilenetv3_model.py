@@ -89,3 +89,4 @@ def build_mobilenetv3_grading_onnx(output_path: Path):
 if __name__ == '__main__':
     target = Path(__file__).resolve().parent.parent / 'models' / 'cotton_grading_mobilenetv3.onnx'
     build_mobilenetv3_grading_onnx(target)
+
