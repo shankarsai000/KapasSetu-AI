@@ -275,6 +275,10 @@ class LintContaminationInspector:
         t0 = time.perf_counter()
         if self.onnx_active and self.ort_session is not None:
             detections = self._run_onnx_inference(frame_bgr)
+            # Combine with spectral-morph detector to ensure maximum sensitivity on moving chute
+            if not detections:
+                fallback_dets = self._run_spectral_morph_fallback(frame_bgr)
+                detections.extend(fallback_dets)
             engine_label = "YOLOv8n-ONNX Local"
         else:
             detections = self._run_spectral_morph_fallback(frame_bgr)

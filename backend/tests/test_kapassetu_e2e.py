@@ -13,6 +13,13 @@ from fastapi.testclient import TestClient
 # Ensure isolated test SQLite DB
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
+TEST_DB = BACKEND_ROOT / "test_kapassetu.db"
+if TEST_DB.exists():
+    try:
+        TEST_DB.unlink()
+    except OSError:
+        pass
+
 os.environ["USE_SQLITE_FALLBACK"] = "True"
 os.environ["SQLITE_URL"] = f"sqlite:///{(BACKEND_ROOT / 'test_kapassetu.db').as_posix()}"
 
