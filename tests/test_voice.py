@@ -157,3 +157,4 @@ def test_4_fastapi_voice_endpoints():
         onboarding_res = client.get("/api/v1/voice/onboarding-audio?language=mr-IN")
         assert onboarding_res.status_code == 200
         assert "guide_text" in onboarding_res.json()
+
