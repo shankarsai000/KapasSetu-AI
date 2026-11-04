@@ -157,3 +157,4 @@ class CottonGradingModel:
 
 
 grading_model = CottonGradingModel()
+

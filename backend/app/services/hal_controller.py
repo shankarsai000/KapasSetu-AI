@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import HalActuatorEvent
+from app.services.industrial_hal_driver import industrial_hal_driver
 
 
 class RealtimeConnectionManager:
@@ -182,6 +183,10 @@ class HalActuatorController:
         db.add(db_event)
         db.commit()
         db.refresh(db_event)
+
+        # Dispatch via Industrial Hardware Abstraction Layer Driver (Modbus-TCP / HMAC / GPIO Bridge)
+        hw_dispatch = industrial_hal_driver.dispatch_hardware_signal(hal_payload)
+        hal_payload["industrial_bridge"] = hw_dispatch
 
         self.last_db_log_monotonic = now_mono
         self.active_event_id = event_code

@@ -94,3 +94,4 @@ def get_yolo_hyperparameters() -> dict[str, Any]:
 
 if __name__ == "__main__":
     print("YOLO Config Specs:", get_yolo_hyperparameters())
+

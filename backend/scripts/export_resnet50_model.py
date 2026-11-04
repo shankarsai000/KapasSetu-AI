@@ -72,3 +72,4 @@ def build_resnet50_grading_onnx(output_path: Path):
 if __name__ == '__main__':
     target = Path(__file__).resolve().parent.parent / 'backend' / 'models' / 'cotton_grading_resnet50.onnx'
     build_resnet50_grading_onnx(target)
+

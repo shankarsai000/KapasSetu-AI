@@ -320,3 +320,4 @@ def calibrate_and_enhance(
         "halo_r75_px": halo_r75_px,
         "enhanced_bgr": enhanced_pile,
     }
+
