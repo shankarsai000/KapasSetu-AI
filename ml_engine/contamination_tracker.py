@@ -19,10 +19,17 @@ Fulfills Argon Contract:
 from __future__ import annotations
 
 import collections
+from pathlib import Path
+import sys
 import time
 from typing import Any
 import cv2
 import numpy as np
+
+# Ensure backend directory is in sys.path so 'app' can be imported from any working directory
+BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 from app.config import settings
 from app.services.lint_inspector import LintContaminationInspector
