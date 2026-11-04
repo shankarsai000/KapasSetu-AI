@@ -85,8 +85,8 @@ def generate_fallback_tone_wav(duration_sec: float = 0.5, freq: float = 523.25) 
 
 
 def split_text_into_chunks(text: str, max_len: int = 140) -> list[str]:
-    """Split speech script along punctuation boundaries to avoid TTS sentence truncation."""
-    raw_sentences = re.split(r"([.!?।\n;]+)", text)
+    """Split speech script along punctuation boundaries to avoid TTS sentence truncation, preserving decimal numbers."""
+    raw_sentences = re.split(r"((?<!\d)[.!?।\n;]+(?!\d))", text)
     sentences: list[str] = []
     for i in range(0, len(raw_sentences), 2):
         s = raw_sentences[i]
