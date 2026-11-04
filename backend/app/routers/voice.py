@@ -32,6 +32,9 @@ class VoiceAskJsonRequest(BaseModel):
     audio_base64: str | None = Field(None, description="Optional base64 encoded audio bytes")
     language: str = Field("mr-IN", description="Language code")
     grade_context: dict[str, Any] | None = Field(None, description="Current assay details for dynamic answer")
+    conversation_history: list[dict[str, Any]] | None = Field(
+        None, description="Previous dialog turns for multi-turn conversational context"
+    )
 
 
 class NarrateGradeRequest(BaseModel):
@@ -97,13 +100,14 @@ async def ask_voice_copilot(
     query_text: str | None = Form(None),
     language: str = Form("mr-IN"),
     grade_context: str | None = Form(None),
+    conversation_history: str | None = Form(None),
 ) -> dict[str, Any]:
     """
     Accepts either multipart audio upload OR JSON payload, executes:
     1. Gnani Prisma STT (speech-to-text) if audio provided
-    2. Conversational Intent Handler for farmer questions
-    3. Gnani Timbre v3.0 TTS (text-to-speech)
-    Returns localized transcript, answer text, and base64 audio.
+    2. Conversational Intent Handler for farmer questions with multi-turn history
+    3. Gnani Timbre v3.0 TTS / Neural Regional Voice Synthesis
+    Returns localized transcript, answer text, base64 audio, suggested followups, and engine badge.
     """
     # Check if request was sent as application/json
     content_type = request.headers.get("content-type", "")
@@ -111,6 +115,7 @@ async def ask_voice_copilot(
     actual_query = query_text or ""
     actual_lang = language
     parsed_context: dict[str, Any] = {}
+    parsed_history: list[dict[str, Any]] = []
 
     if "application/json" in content_type:
         try:
@@ -118,6 +123,7 @@ async def ask_voice_copilot(
             actual_query = body.get("query_text") or ""
             actual_lang = body.get("language") or "mr-IN"
             parsed_context = body.get("grade_context") or {}
+            parsed_history = body.get("conversation_history") or []
             audio_b64 = body.get("audio_base64")
             if audio_b64:
                 import base64
@@ -133,6 +139,11 @@ async def ask_voice_copilot(
                 parsed_context = json.loads(grade_context)
             except Exception:
                 parsed_context = {}
+        if conversation_history:
+            try:
+                parsed_history = json.loads(conversation_history)
+            except Exception:
+                parsed_history = []
 
     # Transcribe audio if provided and query_text is empty
     stt_engine = "text_provided"
@@ -149,6 +160,7 @@ async def ask_voice_copilot(
         query_text=actual_query,
         lang_code=actual_lang,
         current_grade_context=parsed_context,
+        conversation_history=parsed_history,
     )
     result["stt_engine"] = stt_engine
     return result

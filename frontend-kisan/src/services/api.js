@@ -64,13 +64,22 @@ export function connectRealtimeSocket(onMessage) {
   return ws;
 }
 
-export async function askVoiceCopilot({ audioBlob, queryText, language = 'mr-IN', gradeContext = null }) {
+export async function askVoiceCopilot({
+  audioBlob,
+  queryText,
+  language = 'mr-IN',
+  gradeContext = null,
+  conversationHistory = [],
+}) {
   if (audioBlob) {
     const formData = new FormData();
     formData.append('file', audioBlob, 'query.wav');
     formData.append('language', language);
     if (gradeContext) {
       formData.append('grade_context', JSON.stringify(gradeContext));
+    }
+    if (conversationHistory && conversationHistory.length > 0) {
+      formData.append('conversation_history', JSON.stringify(conversationHistory));
     }
     const res = await fetch(`${API_BASE}/api/v1/voice/ask`, {
       method: 'POST',
@@ -87,6 +96,7 @@ export async function askVoiceCopilot({ audioBlob, queryText, language = 'mr-IN'
       query_text: queryText,
       language,
       grade_context: gradeContext,
+      conversation_history: conversationHistory,
     }),
   });
   if (!res.ok) throw new Error('Voice assistant query failed');
