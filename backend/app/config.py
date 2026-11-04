@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     HAL_DEFAULT_RELAY_DURATION_MS: int = 5000
     EXTERNAL_PLC_WEBHOOK_URL: str = ""
 
+    # Gnani.ai Multilingual Speech APIs (Prisma STT & Timbre v3.0 TTS)
+    GNANI_API_KEY: str = ""
+    GNANI_TTS_ENDPOINT: str = "https://api.vachana.ai/api/v1/tts/inference"
+    GNANI_STT_ENDPOINT: str = "https://api.vachana.ai/api/v1/stt/inference"
+
     # CORS
     CORS_ORIGINS: str = "*"
 

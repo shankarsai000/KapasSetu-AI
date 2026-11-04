@@ -16,7 +16,7 @@ from app import database, models, schemas
 from app.config import settings
 from app.database import SessionLocal, init_db
 from app.models import CottonAssay, Farmer, HalActuatorEvent, MillBid, VillagePool
-from app.routers import ginner_hal, grading, marketplace
+from app.routers import ginner_hal, grading, marketplace, voice
 from app.services.lint_inspector import lint_inspector
 from app.services.feedback_store import log_hard_negative_frame
 from ml_engine.contamination_tracker import contamination_tracker
@@ -304,6 +304,7 @@ app.add_middleware(
 app.include_router(grading.router)
 app.include_router(marketplace.router)
 app.include_router(ginner_hal.router)
+app.include_router(voice.router)
 
 
 @app.post("/api/v1/grade")

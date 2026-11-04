@@ -100,6 +100,15 @@ export default function LiveLintScanner({
     return () => clearInterval(timer);
   }, [autoStressTest, sourceMode]);
 
+  // Trigger Klaxon Siren and Spoken Voice Alarm when HAL interlock engages
+  useEffect(() => {
+    if (halStatus?.strobe_siren_state === 'ACTIVE_ALARM') {
+      industrialSiren.triggerKlaxon(3200);
+      const contamName = halStatus?.last_hal_payload?.contaminant || 'Plastic Contaminant';
+      industrialSiren.speakVoiceAlert(contamName, 'hi-IN');
+    }
+  }, [halStatus?.strobe_siren_state, halStatus?.active_event_id]);
+
   const stopWebcam = () => {
     if (webcamStreamRef.current) {
       webcamStreamRef.current.getTracks().forEach((t) => t.stop());

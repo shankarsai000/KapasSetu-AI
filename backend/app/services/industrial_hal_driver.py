@@ -92,3 +92,4 @@ class IndustrialHalHardwareDriver:
 
 
 industrial_hal_driver = IndustrialHalHardwareDriver()
+

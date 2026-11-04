@@ -99,6 +99,23 @@ class IndustrialSirenSynthesizer {
     }
     this.isPlaying = false;
   }
+
+  speakVoiceAlert(contaminant = 'Plastic', lang = 'hi-IN') {
+    if (this.muted || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const msg =
+        lang.startsWith('mr')
+          ? `सावधान! कन्व्हेयर लाईनवर ${contaminant} आढळले आहे. बेल्ट ताबडतोब थांबवा!`
+          : `चेतावनी! कन्वेयर लाइन पर ${contaminant} मिला है। बेल्ट तुरंत रोकें!`;
+      const utterance = new SpeechSynthesisUtterance(msg);
+      utterance.lang = lang;
+      utterance.rate = 1.05;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // Best-effort voice alarm
+    }
+  }
 }
 
 export const industrialSiren = new IndustrialSirenSynthesizer();

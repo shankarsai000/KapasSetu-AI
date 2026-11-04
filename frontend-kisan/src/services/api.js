@@ -64,3 +64,64 @@ export function connectRealtimeSocket(onMessage) {
   return ws;
 }
 
+export async function askVoiceCopilot({ audioBlob, queryText, language = 'mr-IN', gradeContext = null }) {
+  if (audioBlob) {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'query.wav');
+    formData.append('language', language);
+    if (gradeContext) {
+      formData.append('grade_context', JSON.stringify(gradeContext));
+    }
+    const res = await fetch(`${API_BASE}/api/v1/voice/ask`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Voice assistant query failed');
+    return res.json();
+  }
+
+  const res = await fetch(`${API_BASE}/api/v1/voice/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query_text: queryText,
+      language,
+      grade_context: gradeContext,
+    }),
+  });
+  if (!res.ok) throw new Error('Voice assistant query failed');
+  return res.json();
+}
+
+export async function fetchTextToSpeech(text, language = 'mr-IN') {
+  const res = await fetch(`${API_BASE}/api/v1/voice/tts?format=json`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, language }),
+  });
+  if (!res.ok) throw new Error('TTS synthesis failed');
+  return res.json();
+}
+
+export async function fetchOnboardingAudio(language = 'mr-IN') {
+  const res = await fetch(`${API_BASE}/api/v1/voice/onboarding-audio?language=${encodeURIComponent(language)}`);
+  if (!res.ok) throw new Error('Failed to fetch onboarding audio');
+  return res.json();
+}
+
+export async function narrateGradingResult(assay, language = 'mr-IN') {
+  const res = await fetch(`${API_BASE}/api/v1/voice/narrate-grade`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      color_grade: assay.color_grade,
+      trash_percent: assay.trash_percent,
+      final_fair_price_per_qtl: assay.final_fair_price_per_qtl,
+      village_name: assay.village_name,
+      language,
+    }),
+  });
+  if (!res.ok) throw new Error('Failed to generate grading narration');
+  return res.json();
+}
+

@@ -23,6 +23,14 @@
    - Fires native browser **WebAudio API 880Hz/660Hz industrial sirens** + red viewport strobe alerts and dispatches standardized **`KAPASSETU_HAL_V1`** JSON payloads (`POST /api/v1/hal/actuator-trigger`) to halt the Virtual PLC Feeder Conveyor (`RELAY_CH1_24V_NC`) and fire the 8-bar Pneumatic Air-Jet Diverter (`SOLENOID_CH2_8BAR`) — ready for Phase-2 ESP32 / Jetson Orin 24V relays with zero code changes.
    - Built-in **Industrial Hardware Abstraction Layer Driver** with Modbus-TCP coil mappings and cryptographic **HMAC-SHA256 signatures** for verifiable textile mill QA compliance.
 
+4. **Multilingual Voice-First Agricultural Co-Pilot ("Kapas Sahayak" — Gnani.ai Speech APIs)**:
+   - Integrates **Gnani Timbre v3.0 TTS** and **Gnani Prisma STT** across 10 Indian languages (`mr-IN` Marathi, `hi-IN` Hindi, `te-IN` Telugu, `gu-IN` Gujarati, `kn-IN` Kannada, `ta-IN` Tamil, `pa-IN` Punjabi, `bn-IN` Bengali, `ml-IN` Malayalam, `en-IN` English).
+   - **Step-by-Step Voice Onboarding & Camera Coaching**: One-tap "Guide Me (आवाजात ऐका / आवाज़ में समझें)" button speaks camera and photo capture instructions aloud.
+   - **Natural Spoken Result & Negotiation Script**: Automatically narrates color grade, trash %, and fair APMC mandi price aloud (*"Do not sell below ₹8,100/qtl!"*).
+   - **2-Way Conversational Voice Q&A**: Farmers ask questions via microphone or tap quick question pills (*"Is this app free?"*, *"Trader offering 7,000, what to do?"*), receiving human-like localized answers.
+   - **Spoken Factory Contamination Alarms**: Ginner console broadcasts urgent voice alarms (*"Warning! Plastic detected on Line 1. Stop conveyor!"*) in regional languages.
+   - **Production Resilience**: In-memory LRU prompt cache (prevents rate limits), currency/unit normalizer, exponential backoff on HTTP 429, and automatic offline `window.speechSynthesis` fallback.
+
 ---
 
 ## 2. Monorepo Structure
@@ -31,8 +39,9 @@
 KapasSetu AI/
 ├── docker-compose.yml              # PostGIS 15-3.3, Redis 7, FastAPI Backend, Both React Frontends
 ├── start-dev.ps1                   # Instant local launcher (SQLite + Haversine fallback, zero Docker needed)
-├── tests/                          # Master Argon Verification Test Suite
-│   └── test_pipeline.py            # Latency, temporal IoU, HSV shadow, 3-View TTA, Modbus HAL, 5km pooling
+├── tests/                          # Automated Verification Test Suites
+│   ├── test_pipeline.py            # Latency, temporal IoU, HSV shadow, 3-View TTA, Modbus HAL, 5km pooling
+│   └── test_voice.py               # Gnani TTS/STT normalizer, caching, intent handler, voice endpoints
 ├── ml_engine/                      # Computer Vision & Deep Learning Core
 │   ├── calibration.py              # Dual-mode normalization (Von Kries + Minkowski p=6 Shades-of-Gray + CLAHE)
 │   ├── grading_model.py            # Dual-head MobileNetV3 / ResNet50 with 3-View Test-Time Augmentation (TTA)
@@ -40,13 +49,15 @@ KapasSetu AI/
 │   ├── train_grading.py            # Focal Loss + Huber Loss training & backbone escalation pipeline
 │   └── train_yolo.py               # YOLOv8 contamination fine-tuning with background enforcement
 ├── backend/                        # Python 3.11 + FastAPI + OpenCV + ONNX Runtime + SQLAlchemy/GeoAlchemy2
+│   ├── voice_service.py            # Gnani Voice Service module alias
 │   ├── app/
 │   │   ├── main.py                 # FastAPI entrypoint, CORS, Vidarbha ecosystem seeder
-│   │   ├── config.py               # MSP constants, spatial radii, HAL thresholds
+│   │   ├── config.py               # MSP constants, spatial radii, HAL thresholds, Gnani API settings
 │   │   ├── database.py             # PostGIS primary + automatic SQLite fallback
 │   │   ├── models.py               # Farmer, CottonAssay, VillagePool, MillBid, HalActuatorEvent
 │   │   ├── schemas.py              # Pydantic v2 validation contracts
 │   │   ├── services/
+│   │   │   ├── voice_service.py    # Gnani Timbre v3.0 TTS & Prisma STT + intent handler + normalizer
 │   │   │   ├── cv_grading.py       # White-Card Von Kries L*a*b* + Rs 5 Coin 72-Ray Halo Engine
 │   │   │   ├── moisture_proxy.py   # Open-Meteo API + Agronomic / BLE Moisture Estimator
 │   │   │   ├── pricing_engine.py   # 2026-27 MSP & Mandi Fair Valuation Engine
@@ -56,12 +67,15 @@ KapasSetu AI/
 │   │   │   ├── industrial_hal_driver.py # Modbus-TCP coil maps, HMAC-SHA256 signature generator
 │   │   │   └── feedback_store.py   # Active learning hard-negative logger for false alarms
 │   │   └── routers/
+│   │       ├── voice.py            # /api/v1/voice/tts, /ask, /narrate-grade, /onboarding-audio
 │   │       ├── grading.py          # /api/v1/grade, /samples, /assays
 │   │       ├── marketplace.py      # /api/v1/lots/pools, /join-pool, /pools/{id}/bid, /bids/{id}/accept
 │   │       └── ginner_hal.py       # /ws/ginner/stream, /api/v1/hal/actuator-trigger, /reset-line
 │   └── tests/
 │       └── test_kapassetu_e2e.py   # Automated pytest verification for end-to-end flows
 ├── frontend-kisan/                 # Farmer & FPO Mobile-First PWA (EN / मराठी / हिन्दी, Port 5173)
+│   └── src/components/
+│       └── VoiceSahayak.jsx        # Multilingual Voice Co-Pilot (Gnani Timbre TTS + Prisma STT)
 └── frontend-ginner/                # Gin Mill B2B Inspection & Lot Bidding Console (Port 5174)
 ```
 
@@ -116,13 +130,13 @@ docker compose up --build
 
 ## 6. Automated Master Verification Suite
 
-Execute the unified automated verification suite across both ML engine, industrial HAL, and backend API contracts:
+Execute the unified automated verification suite across the ML engine, industrial HAL, multilingual voice co-pilot, and backend API contracts:
 
 ```powershell
-backend\.venv\Scripts\python.exe -m pytest tests/test_pipeline.py backend/tests/test_kapassetu_e2e.py -v
+backend\.venv\Scripts\python.exe -m pytest tests/test_pipeline.py backend/tests/test_kapassetu_e2e.py tests/test_voice.py -v
 ```
 
-**Verification Results: 10 Passed, 0 Failed**:
+**Verification Results: 14 Passed, 0 Failed**:
 - `test_1_dataset_mode_latency_and_schema`: Dataset Mode completes in $<5.0\text{s}$ with full schema and calibration bypass.
 - `test_2_multi_frame_temporal_persistence_and_hal_trigger`: Frames 1–3 suppress transient noise; Frame 4 fires HAL alarm in $<35\text{ms}$.
 - `test_3_hsv_shadow_filter_rejection`: Dark conveyor shadows correctly classified and rejected without stopping the line.
@@ -133,5 +147,9 @@ backend\.venv\Scripts\python.exe -m pytest tests/test_pipeline.py backend/tests/
 - `test_fix1_and_fix2_grade_pool_threshold_and_mill_bid`: Dual-photo CV assay, MSP pricing adjustments, and WebSocket broadcast.
 - `test_fix3_sub35ms_lint_inspection_and_hal_interlock`: Ginning chute inference speed and emergency halt state machine.
 - `test_is_mock_dataset_mode_bypass`: Kaggle/CIRCOT dataset upload bypass mode without physical coin/card.
+- `test_1_text_normalizer_currency_and_units`: Currency, percentage, and agronomic unit normalizer for natural spoken regional audio.
+- `test_2_voice_synthesis_and_lru_caching`: In-memory LRU prompt cache ensuring instant playback with 0ms overhead and zero quota burn.
+- `test_3_conversational_intent_handler`: Localized farmer Q&A mapping intents (app cost, camera usage, trader negotiation) across Indian languages.
+- `test_4_fastapi_voice_endpoints`: End-to-end FastAPI routes for `/api/v1/voice/tts`, `/ask`, `/narrate-grade`, and `/onboarding-audio`.
 
 

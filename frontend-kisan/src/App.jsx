@@ -5,6 +5,7 @@ import DualCameraCapture from './components/DualCameraCapture';
 import MoistureChecklist from './components/MoistureChecklist';
 import GradeCertificate from './components/GradeCertificate';
 import VillagePoolCard from './components/VillagePoolCard';
+import VoiceSahayak from './components/VoiceSahayak';
 import {
   fetchDemoSamples,
   submitCottonAssay,
@@ -325,6 +326,14 @@ export default function App() {
 
       {/* Main Content Container */}
       <main className="max-w-3xl mx-auto px-3 sm:px-4 pt-4 space-y-5">
+        {/* Multilingual Voice Assistant (Kapas Sahayak) */}
+        <VoiceSahayak
+          lang={lang}
+          onLanguageChange={setLang}
+          assay={assay}
+          activeView={activeView}
+        />
+
         {activeView === 'capture' && (
           <>
             <DualCameraCapture
