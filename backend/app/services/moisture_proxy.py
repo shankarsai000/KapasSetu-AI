@@ -7,14 +7,15 @@ from app.config import settings
 
 
 def fetch_local_weather(lat: float, lon: float) -> tuple[float, float, str]:
-    """Query Open-Meteo current relative humidity and temperature with a fast 2s timeout fallback."""
+    """Query Open-Meteo current relative humidity and temperature with a fast 0.8s timeout fallback."""
     params = {
         "latitude": round(lat, 4),
         "longitude": round(lon, 4),
         "current": "relative_humidity_2m,temperature_2m",
     }
+    timeout_sec = min(0.8, settings.OPEN_METEO_TIMEOUT_SEC)
     try:
-        with httpx.Client(timeout=settings.OPEN_METEO_TIMEOUT_SEC) as client:
+        with httpx.Client(timeout=timeout_sec) as client:
             resp = client.get(settings.OPEN_METEO_BASE_URL, params=params)
             resp.raise_for_status()
             data = resp.json()

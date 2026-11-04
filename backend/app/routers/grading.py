@@ -139,9 +139,12 @@ async def analyze_cotton_sample(
     # 1. Optical / Deep Learning Grading (with is_mock fallback support)
     cv_metrics = run_complete_dual_photo_assay(pile_bgr, halo_bgr, is_mock=is_mock)
 
-    # 1b. Run YOLO Contamination model directly on raw pile image for seamless QA
-    yolo_inspection = lint_inspector.inspect_frame(pile_bgr)
-    contaminants = yolo_inspection.get("contaminants_detected", [])
+    # 1b. Run fast YOLO Contamination check
+    if is_mock:
+        contaminants = []
+    else:
+        yolo_inspection = lint_inspector.inspect_frame(pile_bgr)
+        contaminants = yolo_inspection.get("contaminants_detected", [])
 
     # 2. Agronomic Weather Moisture Proxy (or BLE Override)
     moisture_res = estimate_cotton_moisture(

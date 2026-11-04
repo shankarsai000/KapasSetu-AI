@@ -8,14 +8,18 @@ import json
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import BackgroundTasks, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
+from app import database, models, schemas
 from app.config import settings
 from app.database import SessionLocal, init_db
 from app.models import CottonAssay, Farmer, HalActuatorEvent, MillBid, VillagePool
 from app.routers import ginner_hal, grading, marketplace
 from app.services.lint_inspector import lint_inspector
+from app.services.feedback_store import log_hard_negative_frame
+from ml_engine.contamination_tracker import contamination_tracker
 
 
 def seed_initial_vidarbha_ecosystem() -> None:
@@ -300,6 +304,92 @@ app.add_middleware(
 app.include_router(grading.router)
 app.include_router(marketplace.router)
 app.include_router(ginner_hal.router)
+
+
+@app.post("/api/v1/grade")
+async def grade_endpoint_direct(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_db),
+):
+    """Direct alias endpoint fulfilling Argon contract for POST /api/v1/grade."""
+    return await grading.analyze_cotton_sample(request=request, background_tasks=background_tasks, db=db)
+
+
+@app.post("/api/v1/detect-contamination")
+async def detect_contamination_tracked(
+    request: schemas.ContaminationTrackRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_db),
+) -> dict[str, Any]:
+    """
+    Argon Contract Endpoint:
+    Runs sub-35ms ContaminationTracker with HSV shadow filtering and 4-frame IoU persistence.
+    Fires HAL webhook only when a tracked contaminant persists for >= 4 consecutive frames with mean_conf >= 0.75.
+    """
+    from app.services.cv_grading import decode_image_bytes_or_base64
+    from app.services.hal_controller import hal_controller, ws_manager
+
+    frame_bgr = decode_image_bytes_or_base64(request.frame_base64)
+    res = contamination_tracker.process_frame(frame_bgr, injected_hints=request.injected_contaminants)
+
+    hal_result = None
+    if res["alert_triggered"] and request.auto_trigger_hal:
+        top_contam = res["alerting_contaminants"][0]
+        hal_result = hal_controller.trigger_actuator(
+            db=db,
+            mill_id=request.mill_id,
+            camera_id=request.camera_line_id,
+            detections=[{
+                "class_name": top_contam["class_name"],
+                "confidence": top_contam["mean_confidence"],
+                "bbox": top_contam["bbox"],
+            }],
+            inference_latency_ms=res["inference_latency_ms"],
+        )
+        background_tasks.add_task(
+            ws_manager.broadcast_json,
+            {
+                "type": "HAL_ACTUATOR_TRIGGERED",
+                "hal_payload": hal_result["hal_payload"],
+                "hal_status": hal_result["status"],
+            },
+        )
+
+    return {
+        **res,
+        "hal_status": hal_controller.get_status_snapshot(),
+        "hal_trigger_event": hal_result["hal_payload"] if hal_result else None,
+    }
+
+
+@app.post("/api/v1/ginner/false-positive")
+def ginner_false_positive_feedback(
+    payload: schemas.FalsePositiveFeedbackRequest,
+    db: Session = Depends(database.get_db),
+) -> dict[str, Any]:
+    """
+    Argon Contract Endpoint:
+    Logs operator-rejected frames into data/hard_negatives/ and background_hard_negatives/
+    with an empty annotation file for active learning and model retraining.
+    """
+    from app.models import HalActuatorEvent
+    if payload.event_id:
+        ev = db.query(HalActuatorEvent).filter(HalActuatorEvent.event_code == payload.event_id).first()
+        if ev:
+            ev.is_false_positive = True
+            db.commit()
+
+    saved_info = log_hard_negative_frame(
+        frame_bytes_or_b64=payload.frame_base64 or "",
+        contaminant_class=payload.reported_class,
+        operator_notes=payload.operator_notes,
+    )
+    return {
+        "status": "success",
+        "message": "False alarm logged to hard-negative pool for active retraining",
+        **saved_info,
+    }
 
 
 @app.get("/health")

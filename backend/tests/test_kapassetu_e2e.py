@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 
 # Ensure isolated test SQLite DB
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BACKEND_ROOT.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(BACKEND_ROOT))
 TEST_DB = BACKEND_ROOT / "test_kapassetu.db"
 if TEST_DB.exists():

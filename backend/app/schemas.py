@@ -176,6 +176,21 @@ class FrameInspectRequest(BaseModel):
     injected_contaminants: list[dict[str, Any]] | None = None
 
 
+class FalsePositiveFeedbackRequest(BaseModel):
+    frame_base64: str | None = None
+    event_id: str | None = None
+    reported_class: str = "shadow"
+    operator_notes: str | None = "Rejected via Ginner Console operator feedback"
+
+
+class ContaminationTrackRequest(BaseModel):
+    frame_base64: str
+    mill_id: str = "MILL-VIDARBHA-01"
+    camera_line_id: str = "GIN-CHUTE-LINE-1"
+    auto_trigger_hal: bool = True
+    injected_contaminants: list[dict[str, Any]] | None = None
+
+
 class HalEventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
