@@ -826,32 +826,54 @@ class GnaniVoiceService:
         lang_code: str = "mr-IN",
     ) -> dict[str, Any]:
         """Generate automatic voice narration played as soon as cotton assay completes."""
-        color_grade = assay.get("color_grade", "Grade A")
+        raw_grade = str(assay.get("color_grade", "Grade A"))
+        # Clean technical symbols like 'Grade A - Good Middling (HVI Rd >= 75)' for natural speech
+        grade_clean = "Grade A"
+        if "Grade B" in raw_grade:
+            grade_clean = "Grade B"
+        elif "Grade C" in raw_grade:
+            grade_clean = "Grade C"
+        elif "Grade A" in raw_grade or "Superior" in raw_grade or "Good" in raw_grade:
+            grade_clean = "Grade A"
+
+        if grade_clean == "Grade A":
+            mr_grade = "ग्रेड ए उत्तम प्रत"
+            hi_grade = "ग्रेड ए उत्तम गुणवत्ता"
+            te_grade = "గ్రేడ్ ఏ ఉత్తమ నాణ్యత"
+        elif grade_clean == "Grade B":
+            mr_grade = "ग्रेड बी मध्यम प्रत"
+            hi_grade = "ग्रेड बी मध्यम गुणवत्ता"
+            te_grade = "గ్రేడ్ బి మధ్యమ నాణ్యత"
+        else:
+            mr_grade = "ग्रेड सी साधारण प्रत"
+            hi_grade = "ग्रेड सी साधारण गुणवत्ता"
+            te_grade = "గ్రేడ్ సి సాధారణ నాణ్యత"
+
         trash_pct = assay.get("trash_percent", 2.2)
         price_val = int(assay.get("final_fair_price_per_qtl", 7868.0))
         min_price = price_val - 150
 
         if lang_code.startswith("mr"):
             script = (
-                f"राम राम भाऊ! तुमच्या कापसाचा ग्रेड {color_grade} असून कचरा फक्त {trash_pct} टक्के आहे. "
+                f"राम राम भाऊ! तुमच्या कापसाचा दर्जा {mr_grade} असून कचरा फक्त {trash_pct} टक्के आहे. "
                 f"आजचा वाजवी बाजारभाव {price_val} रुपये प्रति क्विंटल आहे. "
                 f"{min_price} रुपयांपेक्षा कमी भावात माल विकू नका! दलालाला कमी भाव देऊ नका!"
             )
         elif lang_code.startswith("hi"):
             script = (
-                f"राम राम भाई! आपकी कपास का ग्रेड {color_grade} है और कचरा सिर्फ {trash_pct} प्रतिशत है। "
+                f"राम राम भाई! आपकी कपास का स्तर {hi_grade} है और कचरा सिर्फ {trash_pct} प्रतिशत है। "
                 f"आज का उचित मंडी भाव {price_val} रुपये प्रति क्विंटल है। "
                 f"{min_price} रुपये से कम में माल मत बेचिए! दलाल को कम भाव न दें!"
             )
         elif lang_code.startswith("te"):
             script = (
-                f"నమస్కారం సోదరా! మీ పత్తి గ్రేడ్ {color_grade}, వ్యర్థాలు {trash_pct} శాతం మాత్రమే ఉన్నాయి. "
+                f"నమస్కారం సోదరా! మీ పత్తి {te_grade}, వ్యర్థాలు {trash_pct} శాతం మాత్రమే ఉన్నాయి. "
                 f"ఈరోజు సరసమైన ధర క్వింటాల్‌కు {price_val} రూపాయలు. "
                 f"{min_price} రూపాయల కంటే తక్కువకు అమ్మవద్దు!"
             )
         else:
             script = (
-                f"Farmer brother! Your cotton is {color_grade} with only {trash_pct} percent trash. "
+                f"Farmer brother! Your cotton is {grade_clean} with only {trash_pct} percent trash. "
                 f"Today's fair market price is {price_val} rupees per quintal. "
                 f"Do not sell below {min_price} rupees!"
             )

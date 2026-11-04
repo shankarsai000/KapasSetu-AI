@@ -96,6 +96,7 @@ export default function VoiceSahayak({
   const mediaRecorderRef = useRef(null);
   const recognitionRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const narratedAssayIdRef = useRef(null);
 
   // Mutable refs to prevent stale closure bugs in async events
   const isHandsFreeRef = useRef(isHandsFree);
@@ -132,9 +133,11 @@ export default function VoiceSahayak({
     };
   }, []);
 
-  // Stop any active audio
+  // Stop any active audio safely and clear listeners to prevent loops
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
@@ -417,7 +420,7 @@ export default function VoiceSahayak({
     }
   };
 
-  // 1. One-Click "Guide Me" Audio
+  // 1. One-Click "Guide Me" Audio (Static guidance - never loops into mic)
   const handlePlayGuideMe = async () => {
     if (isPlaying) {
       stopAudio();
@@ -432,57 +435,79 @@ export default function VoiceSahayak({
         data.audio_mime,
         data.guide_text,
         data.engine,
-        () => handleAssistantFinished(false)
+        null
       );
     } catch {
       const fallbackMsg = currentLangCode.startsWith('mr')
-        ? 'राम राम शेतकरी मित्रांनो! कापसाच्या ढिगाऱ्याशेजारी पांढरा कागद आणि पाच रुपयांचे नाणे ठेवून फोटो काढा. पाच सेकंदात हमीभाव मिळवा.'
+        ? 'राम राम शेतकरी मित्रांनो! कापसाच्या ढिगाऱ्याशेजारी पांढरा कागद आणि पाच रुपयांचे नाणे ठेवा आणि फोटो काढा.'
         : currentLangCode.startsWith('hi')
-        ? 'राम राम किसान भाई! कपास के पास सफेद कागज और पांच रुपये का सिक्का रखकर फोटो लें। सिर्फ ५ सेकंड में सही ग्रेड और मंडी भाव पाएं।'
-        : 'Welcome farmer brother! Place a white paper and 5-rupee coin next to your cotton pile to get your fair MSP price in 5 seconds.';
+        ? 'राम राम किसान भाई! कपास के पास सफेद कागज और पांच रुपये का सिक्का रखकर फोटो लें।'
+        : 'Welcome farmer brother! Place a white paper and 5-rupee coin next to your cotton pile to test your cotton.';
       setActiveSpeechText(fallbackMsg);
-      speakWithBrowserTTS(fallbackMsg, currentLangCode, () => handleAssistantFinished(false));
+      speakWithBrowserTTS(fallbackMsg, currentLangCode, null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 2. Auto-Narrate Cotton Grade Result
-  const handleNarrateAssay = useCallback(async () => {
-    if (!assay) return;
-    if (isPlaying) {
-      stopAudio();
-      return;
-    }
+  // 2. Play Cotton Grade Summary Narration
+  const playAssayNarration = useCallback(async (targetAssay) => {
+    if (!targetAssay) return;
     setIsLoading(true);
     try {
-      const data = await narrateGradingResult(assay, currentLangCode);
+      const data = await narrateGradingResult(targetAssay, currentLangCode);
       setActiveSpeechText(data.narration_text);
       await playAudio(
         data.audio_base64,
         data.audio_mime,
         data.narration_text,
         data.engine,
-        () => handleAssistantFinished(false)
+        null // Summary narration plays once and never auto-listens
       );
     } catch {
-      const fallbackScript = `Farmer brother! Your cotton is ${assay.color_grade} with only ${assay.trash_percent} percent trash. Today's fair market price is ${Math.round(assay.final_fair_price_per_qtl)} rupees per quintal. Do not sell below ${Math.round(assay.final_fair_price_per_qtl) - 150} rupees!`;
+      const cleanGrade = targetAssay.color_grade?.includes('Grade B')
+        ? 'Grade B'
+        : targetAssay.color_grade?.includes('Grade C')
+        ? 'Grade C'
+        : 'Grade A';
+      const fallbackScript = `Farmer brother! Your cotton is ${cleanGrade} with only ${targetAssay.trash_percent} percent trash. Today's fair market price is ${Math.round(targetAssay.final_fair_price_per_qtl)} rupees per quintal. Do not sell below ${Math.round(targetAssay.final_fair_price_per_qtl) - 150} rupees!`;
       setActiveSpeechText(fallbackScript);
-      speakWithBrowserTTS(fallbackScript, currentLangCode, () => handleAssistantFinished(false));
+      speakWithBrowserTTS(fallbackScript, currentLangCode, null);
     } finally {
       setIsLoading(false);
     }
-  }, [assay, currentLangCode, handleAssistantFinished, isPlaying, playAudio, speakWithBrowserTTS, stopAudio]);
+  }, [currentLangCode, playAudio, speakWithBrowserTTS]);
 
-  // Auto-trigger narration when entering certificate view
+  // Toggle button for summary card
+  const handleToggleNarrateAssay = () => {
+    if (isPlaying) {
+      stopAudio();
+    } else if (assay) {
+      playAssayNarration(assay);
+    }
+  };
+
+  // Auto-trigger narration EXACTLY ONCE per assay when entering certificate view
   useEffect(() => {
-    if (activeView === 'certificate' && assay) {
+    if (activeView === 'certificate' && assay?.id) {
+      // Guard against infinite loops: Only speak once per unique assay ID
+      if (narratedAssayIdRef.current === assay.id) {
+        return;
+      }
+      narratedAssayIdRef.current = assay.id;
+
       const timer = setTimeout(() => {
-        handleNarrateAssay();
-      }, 600);
+        playAssayNarration(assay);
+      }, 500);
+
       return () => clearTimeout(timer);
     }
-  }, [activeView, assay, handleNarrateAssay]);
+
+    if (activeView !== 'certificate') {
+      // Stop audio if user navigates away from certificate view
+      stopAudio();
+    }
+  }, [activeView, assay?.id, currentLangCode, playAssayNarration, stopAudio]);
 
   const questionsList =
     QUICK_QUESTIONS[currentLangCode] || QUICK_QUESTIONS['mr-IN'] || [];
@@ -917,7 +942,7 @@ export default function VoiceSahayak({
 
           <button
             type="button"
-            onClick={handleNarrateAssay}
+            onClick={handleToggleNarrateAssay}
             className="min-h-[36px] px-3 py-1 bg-emerald-800 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition"
           >
             {isPlaying ? (
