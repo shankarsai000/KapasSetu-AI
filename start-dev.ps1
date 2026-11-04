@@ -1,6 +1,6 @@
 # KapasSetu AI — One-Command Local Multi-Service Launcher (Zero Docker Required)
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Root = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 
 Write-Host "Starting KapasSetu AI Full-Stack Suite..." -ForegroundColor Green
 
