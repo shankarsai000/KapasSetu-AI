@@ -125,6 +125,7 @@ docker compose up --build
 | **2. "Giving farmers price information doesn't give them market power."** | Telling a small farmer with 4 quintals that cotton is ₹7,500 doesn't help when no ginner will send a truck for 4 quintals. | **5km Spatial Mandi Clustering**: PostGIS `ST_DWithin` / Haversine pools sub-commercial smallholder lots ($<5\text{ qtl}$) into commercial $30+\text{ quintal}$ truckloads. Crossing 30 quintals flips status to `READY_FOR_BIDDING`, locking in direct mill farm-gate bids with tractor pickup and saving ₹250–₹400/qtl in APMC middleman cuts. | [`backend/app/services/lot_aggregator.py`](file:///d:/KapasSetu%20AI/backend/app/services/lot_aggregator.py), [`tests/test_pipeline.py`](file:///d:/KapasSetu%20AI/tests/test_pipeline.py#L237) |
 | **3. "Ginning chute AI will halt the mill on shadows and dust (false alarm chaos)."** | Single-frame false alarms cause emergency shutdowns, destroying mill throughput and credibility. | **Multi-Frame IoU Persistence + HSV Shadow Filter**: Requires $\ge 4$ consecutive frames of contaminant detection with $\ge 0.75$ mean confidence before firing actuator. Dark conveyor shadows are rejected by comparing Hue ($H$) and Saturation ($S$). Operators can flag false alarms to save hard negatives for automated nightly fine-tuning. | [`ml_engine/contamination_tracker.py`](file:///d:/KapasSetu%20AI/ml_engine/contamination_tracker.py), [`tests/test_pipeline.py`](file:///d:/KapasSetu%20AI/tests/test_pipeline.py#L80) |
 | **4. "This is just a simulation; real factories use PLCs and Modbus."** | Webhooks and UI mockups don't work in noisy industrial spinning mills. | **Industrial Hardware Abstraction Layer (`industrial_hal_driver.py`)**: Dispatches standard `KAPASSETU_HAL_V1` events with Modbus-TCP coil maps (Coil `0x0001` de-energized to halt conveyor, Coil `0x0002` energized for pneumatic knife) and generates cryptographic HMAC-SHA256 signatures for mill QA compliance in $<1.0\text{ ms}$. | [`backend/app/services/industrial_hal_driver.py`](file:///d:/KapasSetu%20AI/backend/app/services/industrial_hal_driver.py), [`tests/test_pipeline.py`](file:///d:/KapasSetu%20AI/tests/test_pipeline.py#L162) |
+| **5. "Farmers in rural cotton belt won't read mobile screens under harsh sunlight or trust black-box AI."** | English text and static badges alienate smallholders and cause farmer skepticism. | **Multilingual Voice Co-Pilot ("Kapas Sahayak" — Gnani.ai Timbre v3.0 & Prisma STT)**: 10 Indian languages (`mr-IN` Marathi, `hi-IN` Hindi, `te-IN`, `gu-IN`, `kn-IN`, `en-IN`), affectionate family persona ("घरचा माणूस"), voice-driven language auto-switching ("हिंदी में बोलो"), step-by-step camera coaching, and transparent APMC negotiation scripts spoken aloud. | [`backend/app/services/voice_service.py`](file:///d:/KapasSetu%20AI/backend/app/services/voice_service.py), [`frontend-kisan/src/components/VoiceSahayak.jsx`](file:///d:/KapasSetu%20AI/frontend-kisan/src/components/VoiceSahayak.jsx), [`tests/test_voice.py`](file:///d:/KapasSetu%20AI/tests/test_voice.py#L160) |
 
 ---
 
@@ -133,10 +134,10 @@ docker compose up --build
 Execute the unified automated verification suite across the ML engine, industrial HAL, multilingual voice co-pilot, and backend API contracts:
 
 ```powershell
-backend\.venv\Scripts\python.exe -m pytest tests/test_pipeline.py backend/tests/test_kapassetu_e2e.py tests/test_voice.py -v
+backend\.venv\Scripts\python.exe -m pytest tests/test_voice.py tests/test_pipeline.py backend/tests/test_kapassetu_e2e.py -v
 ```
 
-**Verification Results: 14 Passed, 0 Failed**:
+**Verification Results: 15 Passed, 0 Failed**:
 - `test_1_dataset_mode_latency_and_schema`: Dataset Mode completes in $<5.0\text{s}$ with full schema and calibration bypass.
 - `test_2_multi_frame_temporal_persistence_and_hal_trigger`: Frames 1–3 suppress transient noise; Frame 4 fires HAL alarm in $<35\text{ms}$.
 - `test_3_hsv_shadow_filter_rejection`: Dark conveyor shadows correctly classified and rejected without stopping the line.
@@ -151,5 +152,6 @@ backend\.venv\Scripts\python.exe -m pytest tests/test_pipeline.py backend/tests/
 - `test_2_voice_synthesis_and_lru_caching`: In-memory LRU prompt cache ensuring instant playback with 0ms overhead and zero quota burn.
 - `test_3_conversational_intent_handler`: Localized farmer Q&A mapping intents (app cost, camera usage, trader negotiation) across Indian languages.
 - `test_4_fastapi_voice_endpoints`: End-to-end FastAPI routes for `/api/v1/voice/tts`, `/ask`, `/narrate-grade`, and `/onboarding-audio`.
+- `test_5_language_switching_and_silence_handling`: Automatic voice-activated language switching across regional languages, robust silence handling preventing loops, and agronomic pest advisory intents.
 
 
