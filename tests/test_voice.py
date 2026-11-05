@@ -158,3 +158,36 @@ def test_4_fastapi_voice_endpoints():
         assert onboarding_res.status_code == 200
         assert "guide_text" in onboarding_res.json()
 
+
+def test_5_language_switching_and_silence_handling():
+    """Verify voice-driven language switching and silent speech handling to prevent loops."""
+    # 1. Voice language switch detection
+    res_hi = voice_service.answer_farmer_query("हिंदी में बोलो", lang_code="mr-IN")
+    assert res_hi["intent"] == "SWITCH_LANGUAGE"
+    assert res_hi["switched_language"] == "hi-IN"
+    assert res_hi["language"] == "hi-IN"
+    assert "किसान भाई" in res_hi["reply_text"]
+
+    res_mr = voice_service.answer_farmer_query("मराठीत बोला", lang_code="hi-IN")
+    assert res_mr["intent"] == "SWITCH_LANGUAGE"
+    assert res_mr["switched_language"] == "mr-IN"
+    assert "शेतकरी दादा" in res_mr["reply_text"]
+
+    # 2. Agronomic pest advisory intent
+    res_pest = voice_service.answer_farmer_query("गुलाबी बोंड अळीसाठी काय फवारावे?", lang_code="mr-IN")
+    assert res_pest["intent"] == "PEST_AND_DISEASE"
+    assert "फेरोमोन ट्रॅप" in res_pest["reply_text"] or "निंबोळी" in res_pest["reply_text"]
+
+    # 3. Silence / Empty voice query via FastAPI router: must return 'no_speech' instead of infinite Namaste loop
+    with TestClient(app) as client:
+        silence_res = client.post(
+            "/api/v1/voice/ask",
+            json={"query_text": "", "language": "mr-IN"},
+        )
+        assert silence_res.status_code == 200
+        data = silence_res.json()
+        assert data["status"] == "no_speech"
+        assert data["intent"] == "SILENCE"
+        assert data["reply_text"] == ""
+
+

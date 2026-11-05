@@ -153,11 +153,23 @@ async def ask_voice_copilot(
             lang_code=actual_lang,
         )
 
-    if not actual_query:
-        actual_query = "कापूस सेतू ॲप कसे वापरायचे?"
+    if not actual_query or not actual_query.strip():
+        return {
+            "status": "no_speech",
+            "reply_text": "",
+            "audio_base64": "",
+            "audio_mime": "audio/mpeg",
+            "engine": "none",
+            "stt_engine": stt_engine,
+            "transcription": "",
+            "intent": "SILENCE",
+            "suggested_followups": [],
+            "is_conversation_end": False,
+            "message": "कोणताही आवाज ऐकू आला नाही. बोलण्यासाठी माईक पुन्हा दाबा.",
+        }
 
     result = voice_service.answer_farmer_query(
-        query_text=actual_query,
+        query_text=actual_query.strip(),
         lang_code=actual_lang,
         current_grade_context=parsed_context,
         conversation_history=parsed_history,
